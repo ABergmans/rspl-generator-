@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOM / RSPL Generator — Grootkeukenapparatuur</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #090c10;
+  --surface: #10141c;
+  --surface2: #181d28;
+  --border: #252b3a;
+  --accent: #f5a623;
+  --accent2: #e03d1a;
+  --blue: #3b82f6;
+  --text: #e2e6f0;
+  --dim: #5a6278;
+  --success: #22c55e;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --display: 'Bebas Neue', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; overflow-x:hidden; }
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image: linear-gradient(rgba(245,166,35,.025) 1px,transparent 1px), linear-gradient(90deg,rgba(245,166,35,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+.wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 24px; }
+
+/* HEADER */
+header { padding:36px 0 28px; border-bottom:1px solid var(--border); }
+.h-inner { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.logo h1 { font-family:var(--display); font-size:clamp(44px,7vw,68px); letter-spacing:2px; line-height:1; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.logo p { font-family:var(--mono); font-size:10px; color:var(--dim); letter-spacing:3px; text-transform:uppercase; margin-top:3px; }
+.badges { display:flex; gap:8px; flex-wrap:wrap; }
+.badge { padding:5px 12px; font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; border:1px solid var(--border); background:var(--surface2); color:var(--dim); }
+.badge.ai { color:var(--accent); border-color:rgba(245,166,35,.3); }
+
+main { padding:36px 0 80px; }
+
+/* MODE SELECTOR */
+.mode-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:28px; }
+.mode-card { padding:20px 24px; background:var(--surface); border:2px solid var(--border); cursor:pointer; transition:all .2s; position:relative; }
+.mode-card:hover { border-color:var(--dim); }
+.mode-card.active { border-color:var(--accent); background:var(--surface2); }
+.mode-card.active::after { content:''; position:absolute; bottom:0;left:0;right:0; height:2px; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+.mode-card h3 { font-family:var(--display); font-size:22px; letter-spacing:1px; margin-bottom:4px; color:var(--text); }
+.mode-card p { font-family:var(--mono); font-size:11px; color:var(--dim); line-height:1.5; }
+.mode-card .tag { display:inline-block; margin-top:8px; padding:3px 8px; font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; }
+.tag-bom { background:rgba(59,130,246,.12); color:var(--blue); border:1px solid rgba(59,130,246,.25); }
+.tag-rspl { background:rgba(245,166,35,.12); color:var(--accent); border:1px solid rgba(245,166,35,.25); }
+
+/* INPUT SECTION */
+.input-section { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.card { background:var(--surface); border:1px solid var(--border); padding:28px; }
+.card-label { font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:3px; text-transform:uppercase; margin-bottom:20px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+.card-label span { color:var(--dim); }
+.form-g { display:flex; flex-direction:column; gap:7px; margin-bottom:14px; }
+.form-g:last-child { margin-bottom:0; }
+label { font-family:var(--mono); font-size:10px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; }
+input[type=text], select, textarea {
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  font-family:var(--mono); font-size:13px; padding:10px 12px; outline:none; transition:border-color .2s; width:100%;
+}
+input[type=text]:focus, select:focus, textarea:focus { border-color:var(--accent); }
+select option { background:var(--bg); }
+textarea { resize:vertical; min-height:72px; }
+.upload-zone {
+  border:2px dashed var(--border); background:var(--bg); padding:32px 20px; text-align:center;
+  cursor:pointer; transition:all .2s; position:relative; min-height:140px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+}
+.upload-zone:hover, .upload-zone.over { border-color:var(--accent); background:rgba(245,166,35,.03); }
+.upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.upload-zone .icon { font-size:28px; }
+.upload-zone p { font-family:var(--mono); font-size:11px; color:var(--dim); }
+.upload-zone .fname { color:var(--success); font-size:12px; margin-top:4px; }
+
+/* GENERATE BUTTON */
+.btn-gen {
+  width:100%; padding:16px; background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none; color:#000; font-family:var(--display); font-size:20px; letter-spacing:3px;
+  cursor:pointer; transition:all .2s; margin-top:4px; display:flex; align-items:center; justify-content:center; gap:12px;
+}
+.btn-gen:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 32px rgba(245,166,35,.25); }
+.btn-gen:disabled { opacity:.5; cursor:not-allowed; }
+.spin { width:18px; height:18px; border:2px solid rgba(0,0,0,.25); border-top-color:#000; border-radius:50%; animation:spin .7s linear infinite; display:none; }
+.btn-gen.loading .btn-text { display:none; }
+.btn-gen.loading .spin { display:block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* PROGRESS */
+.prog { height:2px; background:var(--border); margin-top:12px; overflow:hidden; display:none; }
+.prog.on { display:block; }
+.prog-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0; transition:width .4s; }
+
+/* ERROR */
+.err { background:rgba(224,61,26,.1); border:1px solid rgba(224,61,26,.3); color:#e8471a; font-family:var(--mono); font-size:12px; padding:12px 16px; margin-top:12px; display:none; }
+.err.on { display:block; }
+
+/* OUTPUT */
+.out { display:none; margin-top:32px; }
+.out.on { display:block; }
+.out-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+.out-header h2 { font-family:var(--display); font-size:32px; letter-spacing:2px; color:var(--accent); }
+.out-actions { display:flex; gap:10px; }
+.btn-export {
+  padding:10px 18px; background:transparent; border:1px solid var(--accent); color:var(--accent);
+  font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all .2s;
+}
+.btn-export:hover { background:var(--accent); color:#000; }
+.btn-export.blue { border-color:var(--blue); color:var(--blue); }
+.btn-export.blue:hover { background:var(--blue); color:#fff; }
+
+/* META GRID */
+.meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1px; background:var(--border); margin-bottom:20px; border:1px solid var(--border); }
+.meta-item { background:var(--surface2); padding:14px 18px; }
+.meta-item label { display:block; margin-bottom:3px; }
+.meta-item span { font-family:var(--mono); font-size:13px; color:var(--text); }
+
+/* TABLE */
+.tbl-wrap { overflow-x:auto; border:1px solid var(--border); max-height:520px; overflow-y:auto; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+thead { position:sticky; top:0; z-index:2; }
+thead tr:first-child th { background:var(--surface2); border-bottom:2px solid var(--accent); font-family:var(--mono); font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); padding:10px 12px; white-space:nowrap; }
+thead tr:last-child th { background:var(--surface); border-bottom:1px solid var(--border); font-family:var(--mono); font-size:9px; color:var(--dim); padding:6px 12px; white-space:nowrap; letter-spacing:1px; }
+tbody tr { border-bottom:1px solid var(--border); transition:background .15s; }
+tbody tr:hover { background:var(--surface2); }
+tbody td { padding:9px 12px; font-family:var(--mono); font-size:11px; color:var(--text); vertical-align:top; white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
+.prio-hoog { color:#e8471a; } .prio-middel { color:var(--accent); } .prio-laag { color:var(--success); }
+.col-no { color:var(--dim); font-size:10px; }
+
+/* NOTES */
+.notes { margin-top:20px; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); padding:18px 22px; }
+.notes h3 { font-family:var(--mono); font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+.notes p { font-size:13px; line-height:1.7; color:var(--dim); }
+
+/* COLUMN TOGGLE */
+.col-toggle { margin-bottom:16px; background:var(--surface); border:1px solid var(--border); padding:16px 20px; }
+.col-toggle summary { font-family:var(--mono); font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; cursor:pointer; }
+.col-toggle-inner { margin-top:12px; display:flex; flex-wrap:wrap; gap:6px; }
+.col-pill { padding:4px 10px; border:1px solid var(--border); font-family:var(--mono); font-size:10px; color:var(--dim); cursor:pointer; transition:all .15s; user-select:none; }
+.col-pill.on { border-color:var(--accent); color:var(--accent); background:rgba(245,166,35,.08); }
+
+@media(max-width:700px) {
+  .mode-row, .input-section { grid-template-columns:1fr; }
+  .card { padding:18px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="h-inner">
+      <div class="logo">
+        <h1>BOM / RSPL Generator</h1>
+        <p>Grootkeukenapparatuur — AI-powered spare parts intelligence</p>
+      </div>
+      <div class="badges">
+        <span class="badge ai">Gemini 1.5 Flash — Gratis</span>
+        <span class="badge">72 kolommen</span>
+        <span class="badge">XLSX export</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <!-- MODE -->
+  <div class="mode-row">
+    <div class="mode-card active" id="mode-bom" onclick="setMode('bom')">
+      <h3>Bill of Material</h3>
+      <p>Volledige lijst van alle onderdelen — van systeem tot kleinste bestelbare onderdeel</p>
+      <span class="tag tag-bom">BOM — Compleet</span>
+    </div>
+    <div class="mode-card" id="mode-rspl" onclick="setMode('rspl')">
+      <h3>Recommended Spare Parts List</h3>
+      <p>Geselecteerde aanbevolen reserveonderdelen op basis van slijtage, prioriteit en interval</p>
+      <span class="tag tag-rspl">RSPL — Aanbevolen</span>
+    </div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-section">
+    <!-- Merk & Model -->
+    <div class="card">
+      <div class="card-label">✏ Merk &amp; Model <span>of gebruik PDF →</span></div>
+      <div class="form-g">
+        <label>Merk</label>
+        <input type="text" id="merk" placeholder="bijv. Rational, Hobart, Fagor…">
+      </div>
+      <div class="form-g">
+        <label>Type / Model</label>
+        <input type="text" id="model" placeholder="bijv. iCombi Pro 6-1/1">
+      </div>
+      <div class="form-g">
+        <label>Categorie apparaat</label>
+        <select id="categorie">
+          <option value="">— Selecteer —</option>
+          <option>Combisteamer / Combi-oven</option>
+          <option>Convectie-oven</option>
+          <option>Koeling / Koelaggregaat</option>
+          <option>Vriezer / Blast chiller</option>
+          <option>Vaatwasser / Glazenspoelmachine</option>
+          <option>Kookapparatuur (inductie/gas)</option>
+          <option>Friteuse</option>
+          <option>Salamander / Grill</option>
+          <option>Snijmachine</option>
+          <option>Mengmachine / Mixer</option>
+          <option>Warmhoudkast / Bain marie</option>
+          <option>Koffieapparaat / Espressomachine</option>
+          <option>Anders</option>
+        </select>
+      </div>
+      <div class="form-g">
+        <label>Serienummer (optioneel)</label>
+        <input type="text" id="sn" placeholder="bijv. SN-123456">
+      </div>
+      <div class="form-g">
+        <label>Subcontractor naam (optioneel)</label>
+        <input type="text" id="subcon" placeholder="Naam bedrijf">
+      </div>
+    </div>
+
+    <!-- PDF Upload -->
+    <div class="card">
+      <div class="card-label">📄 PDF Upload <span>technische documentatie</span></div>
+      <div class="upload-zone" id="drop-zone">
+        <input type="file" id="pdf-in" accept=".pdf" onchange="onFile(event)">
+        <span class="icon">⬆</span>
+        <p>Sleep PDF hier naartoe of klik</p>
+        <p>Onderdelenlijst / technisch schema / servicehandleiding</p>
+        <p class="fname" id="fname"></p>
+      </div>
+      <div class="form-g" style="margin-top:14px;">
+        <label>Extra context / opmerkingen</label>
+        <textarea id="ctx" placeholder="bijv. focus op slijtdelen, bouwjaar, gebruiksintensiteit…"></textarea>
+      </div>
+      <div class="form-g">
+        <label>Aankoopreferentie / PO nummer (optioneel)</label>
+        <input type="text" id="po" placeholder="bijv. PO-2024-001">
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-gen" id="btn-gen" onclick="generate()">
+    <span class="btn-text" id="btn-label">BOM GENEREREN</span>
+    <span class="spin"></span>
+  </button>
+  <div class="prog" id="prog"><div class="prog-fill" id="prog-fill"></div></div>
+  <div class="err" id="err"></div>
+
+  <!-- OUTPUT -->
+  <div class="out" id="output">
+    <div class="out-header">
+      <h2 id="out-title">BOM RESULTAAT</h2>
+      <div class="out-actions">
+        <button class="btn-export blue" onclick="exportXlsx()">⬇ XLSX Exporteren</button>
+        <button class="btn-export" onclick="exportCsv()">⬇ CSV</button>
+      </div>
+    </div>
+
+    <div class="meta-grid" id="meta-grid"></div>
+
+    <!-- Column toggle -->
+    <details class="col-toggle" id="col-toggle-details">
+      <summary>Kolommen weergeven/verbergen</summary>
+      <div class="col-toggle-inner" id="col-pills"></div>
+    </details>
+
+    <div class="tbl-wrap">
+      <table id="result-table">
+        <thead><tr id="thead-row1"></tr><tr id="thead-row2"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="notes" id="notes">
+      <h3>// Opmerkingen &amp; Advies</h3>
+      <p id="notes-txt"></p>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<script>
+// ─── STATE ───
+let mode = 'bom';
+let pdfB64 = null;
+let rsplData = null;
+let visibleCols = new Set();
+
+// ─── COLUMN DEFINITIONS ───
+// Key columns we ask Claude to fill (subset of 72, adapted for kitchen equipment)
+const COLS = [
+  { id:'line_no',        label:'Regel Nr.',        col:'8',  w:8 },
+  { id:'ppb',            label:'PPB Code',          col:'10', w:16 },
+  { id:'ppb_desc',       label:'PPB Omschrijving',  col:'11', w:28 },
+  { id:'oem_part',       label:'OEM Onderdeelnr.',  col:'12', w:18 },
+  { id:'manufacturer',   label:'Fabrikant',         col:'13', w:20 },
+  { id:'spare_name',     label:'Naam Onderdeel',    col:'17', w:28 },
+  { id:'qty_assembly',   label:'Aantal/Assembly',   col:'18', w:12 },
+  { id:'unit_issue',     label:'Eenheid',           col:'19', w:8 },
+  { id:'unit_price',     label:'Prijs (€)',         col:'20', w:10 },
+  { id:'delivery_days',  label:'Levertijd (dgn)',   col:'29', w:12 },
+  { id:'part_type_lru',  label:'LRU (Y/N)',         col:'34', w:8 },
+  { id:'spare_class',    label:'Kl. (1/2/6)',       col:'35', w:8 },
+  { id:'spare_type',     label:'Type (Pr/Cr/Con)',  col:'57', w:12 },
+  { id:'icc',            label:'ICC Code',          col:'58', w:8 },
+  { id:'repair_level',   label:'Niveau (OLM/ILM/DLM)', col:'59', w:14 },
+  { id:'is_rspl',        label:'Aanbevolen (Y/N)',  col:'55', w:12 },
+  { id:'reason',         label:'Reden selectie',    col:'56', w:14 },
+  { id:'board_180',      label:'Boord 180 dgn',     col:'61', w:12 },
+  { id:'base_2yr',       label:'Basis 0-2 jr',      col:'62', w:10 },
+  { id:'min_qty',        label:'Min. bestelling',   col:'63', w:12 },
+  { id:'shelf_life',     label:'Houdbaar (mnd)',    col:'64', w:12 },
+  { id:'insurance',      label:'Verzekering (Y/N)', col:'67', w:12 },
+  { id:'serial_track',   label:'Serienr. track',    col:'26', w:10 },
+  { id:'packaging',      label:'Verpakking',        col:'39', w:10 },
+  { id:'hazmat_un',      label:'UN Gevaarsstof',    col:'36', w:10 },
+  { id:'mtbf',           label:'MTBF',              col:'51', w:10 },
+  { id:'mttr',           label:'MTTR (uur)',        col:'54', w:10 },
+  { id:'elot',           label:'ELOT (YY/MM)',      col:'43', w:10 },
+  { id:'obsolescence',   label:'Kans obsoletie',   col:'44', w:12 },
+  { id:'remarks',        label:'Opmerkingen',       col:'72', w:30 },
+];
+
+// Default visible columns
+const DEFAULT_VIS = new Set(['line_no','ppb','ppb_desc','oem_part','manufacturer','spare_name','qty_assembly','unit_issue','unit_price','delivery_days','part_type_lru','spare_type','is_rspl','reason','board_180','base_2yr','remarks']);
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-bom').classList.toggle('active', m==='bom');
+  document.getElementById('mode-rspl').classList.toggle('active', m==='rspl');
+  document.getElementById('btn-label').textContent = m === 'bom' ? 'BOM GENEREREN' : 'RSPL GENEREREN';
+  document.getElementById('out-title').textContent = m === 'bom' ? 'BOM RESULTAAT' : 'RSPL RESULTAAT';
+}
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') loadPdf(f);
+});
+
+function onFile(e) { const f = e.target.files[0]; if (f) loadPdf(f); }
+function loadPdf(f) {
+  document.getElementById('fname').textContent = '✓ ' + f.name;
+  const r = new FileReader();
+  r.onload = ev => pdfB64 = ev.target.result.split(',')[1];
+  r.readAsDataURL(f);
+}
+
+// ─── GENERATE ───
+async function generate() {
+  clearErr();
+  const merk = document.getElementById('merk').value.trim();
+  const model = document.getElementById('model').value.trim();
+  const cat = document.getElementById('categorie').value;
+  const sn = document.getElementById('sn').value.trim();
+  const subcon = document.getElementById('subcon').value.trim();
+  const ctx = document.getElementById('ctx').value.trim();
+  const po = document.getElementById('po').value.trim();
+
+  if (!merk && !model && !pdfB64) {
+    showErr('Vul merk + model in, of upload een PDF.'); return;
+  }
+
+  const isBom = mode === 'bom';
+  const modeLabel = isBom ? 'Bill of Material (BOM)' : 'Recommended Spare Parts List (RSPL)';
+
+  const colDesc = COLS.map(c => `- "${c.id}": kolom ${c.col} — ${c.label}`).join('\n');
+
+  const systemPrompt = `Je bent een expert technisch servicemonteur en logistiek specialist voor professionele grootkeukenapparatuur. Je hebt uitgebreide kennis van alle gangbare merken en modellen en hun onderdelen.
+
+Je taak: genereer een gedetailleerde ${modeLabel} op basis van de opgegeven apparaatgegevens.
+${isBom ? 'Een BOM bevat ALLE onderdelen, van systeem tot kleinste bestelbaar onderdeel (hiërarchisch).' : 'Een RSPL bevat uitsluitend de AANBEVOLEN reserveonderdelen geselecteerd op slijtage, risico en prioriteit.'}
+
+Reageer UITSLUITEND als geldig JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.
+
+JSON-structuur:
+{
+  "merk": string,
+  "model": string,
+  "categorie": string,
+  "subcontractor": string,
+  "po_number": string,
+  "list_type": "${mode.toUpperCase()}",
+  "datum": string (vandaag DD-MM-YYYY),
+  "items": [
+    {
+      "line_no": string (001, 002…),
+      "ppb": string (bijv. 01, 01.01, 01.01.01),
+      "ppb_desc": string,
+      "oem_part": string,
+      "manufacturer": string,
+      "spare_name": string,
+      "qty_assembly": string,
+      "unit_issue": string (EA/KG/LI/MR/SE),
+      "unit_price": string (getal of "n.b."),
+      "delivery_days": string,
+      "part_type_lru": string (Y/N),
+      "spare_class": string (1/2/6),
+      "spare_type": string (Pr/Cr/Con),
+      "icc": string (X/Y/Z/Q/AE/etc.),
+      "repair_level": string (OLM/ILM/DLM),
+      "is_rspl": string (Y/N),
+      "reason": string (1-10 code, zie def.),
+      "board_180": string (getal),
+      "base_2yr": string (getal),
+      "min_qty": string,
+      "shelf_life": string,
+      "insurance": string (Y/N),
+      "serial_track": string (Y/N),
+      "packaging": string (0-9),
+      "hazmat_un": string,
+      "mtbf": string,
+      "mttr": string,
+      "elot": string,
+      "obsolescence": string,
+      "remarks": string
+    }
+  ],
+  "opmerkingen": string
+}
+
+Vul zo veel mogelijk kolommen in. Gebruik "n.b." als waarde onbekend is. Geef ${isBom ? 'minstens 20' : 'minstens 15'} items.`;
+
+  const userContent = pdfB64
+    ? [
+        { type:'document', source:{ type:'base64', media_type:'application/pdf', data:pdfB64 } },
+        { type:'text', text:`Analyseer dit technisch document en genereer een ${modeLabel} voor de daarin beschreven grootkeukenapparatuur.${merk ? '\nMerk: ' + merk : ''}${model ? '\nModel: ' + model : ''}${cat ? '\nCategorie: ' + cat : ''}${sn ? '\nSerienummer: ' + sn : ''}${subcon ? '\nSubcontractor: ' + subcon : ''}${po ? '\nPO nummer: ' + po : ''}${ctx ? '\nExtra context: ' + ctx : ''}` }
+      ]
+    : `Genereer een ${modeLabel} voor:\nMerk: ${merk}\nModel/Type: ${model}${cat ? '\nCategorie: ' + cat : ''}${sn ? '\nSerienummer: ' + sn : ''}${subcon ? '\nSubcontractor: ' + subcon : ''}${po ? '\nPO nummer: ' + po : ''}${ctx ? '\nExtra context: ' + ctx : ''}`;
+
+  setLoading(true);
+
+  try {
+    const res = await fetch('/api/claude', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        model:'gemini-1.5-flash',
+        max_tokens:4000,
+        system: systemPrompt,
+        messages:[{ role:'user', content: userContent }]
+      })
+    });
+
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error?.message || 'API fout ' + res.status);
+    }
+
+    const data = await res.json();
+    const raw = data.content.map(b => b.text || '').join('').replace(/```json|```/g,'').trim();
+    let parsed;
+    try { parsed = JSON.parse(raw); }
+    catch { const m = raw.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('JSON parse mislukt'); }
+
+    rsplData = parsed;
+    render(parsed);
+  } catch(e) {
+    showErr(e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ─── RENDER ───
+function render(d) {
+  // Meta
+  const today = new Date().toLocaleDateString('nl-NL');
+  document.getElementById('meta-grid').innerHTML = [
+    ['Merk', d.merk||'—'], ['Model', d.model||'—'], ['Categorie', d.categorie||'—'],
+    ['Type lijst', d.list_type||mode.toUpperCase()], ['Datum', today],
+    ['Subcontractor', d.subcontractor||'—'], ['PO Nr.', d.po_number||'—'],
+    ['Aantal items', (d.items||[]).length]
+  ].map(([l,v]) => `<div class="meta-item"><label>${l}</label><span>${v}</span></div>`).join('');
+
+  // Column pills
+  visibleCols = new Set(DEFAULT_VIS);
+  // For RSPL, always show is_rspl/reason columns
+  const pills = document.getElementById('col-pills');
+  pills.innerHTML = '';
+  COLS.forEach(c => {
+    const pill = document.createElement('span');
+    pill.className = 'col-pill' + (visibleCols.has(c.id) ? ' on' : '');
+    pill.textContent = c.label;
+    pill.dataset.id = c.id;
+    pill.onclick = () => {
+      visibleCols.has(c.id) ? visibleCols.delete(c.id) : visibleCols.add(c.id);
+      pill.classList.toggle('on');
+      refreshTable(d);
+    };
+    pills.appendChild(pill);
+  });
+
+  refreshTable(d);
+  document.getElementById('notes-txt').textContent = d.opmerkingen || '—';
+  document.getElementById('output').classList.add('on');
+  setTimeout(() => document.getElementById('output').scrollIntoView({ behavior:'smooth', block:'start' }), 80);
+}
+
+function refreshTable(d) {
+  const visCols = COLS.filter(c => visibleCols.has(c.id));
+
+  // Header
+  const r1 = document.getElementById('thead-row1');
+  const r2 = document.getElementById('thead-row2');
+  r1.innerHTML = visCols.map(c => `<th>${c.label}</th>`).join('');
+  r2.innerHTML = visCols.map(c => `<th>col. ${c.col}</th>`).join('');
+
+  // Body
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = '';
+  (d.items||[]).forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = visCols.map(c => {
+      let v = item[c.id] || '—';
+      let cls = '';
+      if (c.id === 'is_rspl') cls = v === 'Y' ? 'prio-laag' : '';
+      if (c.id === 'part_type_lru' && v === 'Y') cls = 'prio-laag';
+      if (c.id === 'insurance' && v === 'Y') cls = 'prio-hoog';
+      return `<td class="${cls}" title="${String(v).replace(/"/g,'&quot;')}">${v}</td>`;
+    }).join('');
+    tb.appendChild(tr);
+  });
+}
+
+// ─── EXPORT XLSX ───
+function exportXlsx() {
+  if (!rsplData) return;
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Data ──
+  const visCols = COLS; // Export all columns
+  const today = new Date().toLocaleDateString('nl-NL');
+
+  // Header rows
+  const metaRows = [
+    ['BOM / RSPL Generator — Grootkeukenapparatuur'],
+    [],
+    ['Type lijst:', rsplData.list_type || mode.toUpperCase(), '', 'Merk:', rsplData.merk || '—', '', 'Model:', rsplData.model || '—'],
+    ['Categorie:', rsplData.categorie || '—', '', 'Subcontractor:', rsplData.subcontractor || '—', '', 'PO Nr.:', rsplData.po_number || '—'],
+    ['Datum gegenereerd:', today, '', 'Aantal items:', (rsplData.items||[]).length],
+    [],
+  ];
+
+  // Column headers (2 rows: label + col number)
+  const hRow1 = visCols.map(c => c.label);
+  const hRow2 = visCols.map(c => 'Kolom ' + c.col);
+
+  // Data rows
+  const dataRows = (rsplData.items || []).map(item =>
+    visCols.map(c => item[c.id] || '')
+  );
+
+  const allRows = [...metaRows, hRow1, hRow2, ...dataRows];
+
+  // Opmerkingen
+  allRows.push([], ['Opmerkingen / Advies:'], [rsplData.opmerkingen || '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+  // Column widths
+  ws['!cols'] = visCols.map(c => ({ wch: c.w }));
+
+  // Freeze header + meta rows
+  ws['!freeze'] = { xSplit: 0, ySplit: metaRows.length + 2 };
+
+  XLSX.utils.book_append_sheet(wb, ws, rsplData.list_type || 'LIJST');
+
+  // ── Sheet 2: Legenda ──
+  const legRows = [
+    ['Kolom Nr.', 'Kolom Label', 'Omschrijving'],
+    ...COLS.map(c => [
+      'Kolom ' + c.col,
+      c.label,
+      LEGENDA[c.id] || ''
+    ])
+  ];
+  const wsLeg = XLSX.utils.aoa_to_sheet(legRows);
+  wsLeg['!cols'] = [{ wch:12 }, { wch:28 }, { wch:70 }];
+  XLSX.utils.book_append_sheet(wb, wsLeg, 'Legenda');
+
+  const fname = `${rsplData.list_type || mode.toUpperCase()}_${(rsplData.merk||'export').replace(/\s/g,'_')}_${(rsplData.model||'').replace(/\s/g,'_')}_${today.replace(/\//g,'-')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+const LEGENDA = {
+  line_no:'Volgnummer van de rij (001, 002, ...)',
+  ppb:'Physical Product Breakdown code — hiërarchische afbraakstructuur (bijv. 01.02.03)',
+  ppb_desc:'Naam/omschrijving van het onderdeel in de PPB',
+  oem_part:'Onderdeelnummer van de Original Equipment Manufacturer',
+  manufacturer:'Naam van de fabrikant (OEM)',
+  spare_name:'Naam van het reserveonderdeel (indien afwijkend van PPB omschrijving)',
+  qty_assembly:'Aantal keer dat het onderdeel voorkomt in de assembly',
+  unit_issue:'Eenheid van uitgifte: EA=stuks, KG=kilogram, LI=liter, MR=meter, SE=set',
+  unit_price:'Catalogusprijs per eenheid in Euro\'s (excl. BTW)',
+  delivery_days:'Verwachte levertijd in kalenderdagen',
+  part_type_lru:'Line Replaceable Unit: Y=ja, N=nee',
+  spare_class:'1=verbruiksartikel, 2=repareerbaar (eigen IPC), 6=repareerbaar (geen IPC)',
+  spare_type:'Pr=preventief, Cr=correctief, Con=verbruiksartikel',
+  icc:'Item Category Code: X=slijtdeel, Y=reparatiedeel, Q=bulk, AE=bevestigingsmateriaal',
+  repair_level:'OLM=aan boord/op locatie, ILM=intermediair, DLM=depot/specialist',
+  is_rspl:'Aanbevolen reserveonderdeel: Y=ja, N=nee',
+  reason:'Reden selectie RSPL: 1=slijtage, 2=onderhoudschade, 4=trilling, 6=deterioratie, 7=temperatuur, 8=overig, 9=verzekering',
+  board_180:'Aanbevolen hoeveelheid boordvoorraad voor 180 aaneengesloten operationele dagen',
+  base_2yr:'Aanbevolen basisvoorraad voor de eerste 0-2 jaar',
+  min_qty:'Minimale bestelhoeveelheid',
+  shelf_life:'Houdbaarheid in maanden',
+  insurance:'Verzekeringsonderdeel (lang levertijd, hoge impact): Y/N',
+  serial_track:'Serienummer traceerbaarheid vereist: Y/N',
+  packaging:'Verpakkingsniveau: 0=geen, 1=1jr buiten, 3=5jr gebouw, 4=1jr gebouw, 5=handelsverpakking',
+  hazmat_un:'UN-nummer gevaarlijk materiaal (indien van toepassing)',
+  mtbf:'Mean Time Between Failure — gemiddelde tijd tussen storingen',
+  mttr:'Mean Time To Repair in uren',
+  elot:'End Life of Type — verwachte einddatum leveringsstop (YY/MM)',
+  obsolescence:'Verwachte tijdshorizon voor obsoletie',
+  remarks:'Aanvullende opmerkingen'
+};
+
+function exportCsv() {
+  if (!rsplData) return;
+  const hdr = COLS.map(c => `"${c.label}"`).join(',');
+  const rows = (rsplData.items||[]).map(item =>
+    COLS.map(c => `"${String(item[c.id]||'').replace(/"/g,'""')}"`).join(',')
+  );
+  const csv = [hdr,...rows].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download = `${mode.toUpperCase()}_${(rsplData.merk||'').replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ─── UI HELPERS ───
+function setLoading(on) {
+  const btn = document.getElementById('btn-gen');
+  const prog = document.getElementById('prog');
+  btn.disabled = on; btn.classList.toggle('loading', on);
+  prog.classList.toggle('on', on);
+  if (on) {
+    let w = 0;
+    prog._iv = setInterval(() => {
+      w = Math.min(w + Math.random()*7, 84);
+      document.getElementById('prog-fill').style.width = w+'%';
+    }, 500);
+  } else {
+    clearInterval(prog._iv);
+    document.getElementById('prog-fill').style.width = '100%';
+    setTimeout(() => prog.classList.remove('on'), 600);
+  }
+}
+function showErr(msg) { const e = document.getElementById('err'); e.textContent = '⚠ '+msg; e.classList.add('on'); }
+function clearErr() { document.getElementById('err').classList.remove('on'); }
+</script>
+</body>
+</html>

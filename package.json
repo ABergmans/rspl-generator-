@@ -1,0 +1,8 @@
+{
+  "name": "rspl-generator",
+  "version": "1.0.0",
+  "description": "BOM / RSPL Generator voor grootkeukenapparatuur",
+  "engines": {
+    "node": "18.x"
+  }
+}
