@@ -8,41 +8,40 @@ export default async function handler(req, res) {
 
   const API_KEY = process.env.GEMINI_API_KEY;
   if (!API_KEY) {
-    return res.status(500).json({ error: "GEMINI_API_KEY niet ingesteld in Vercel Environment Variables." });
+    return res.status(500).json({ error: "GEMINI_API_KEY is niet ingesteld in Vercel Environment Variables." });
   }
 
   try {
     const { system, messages, max_tokens } = req.body;
 
-    // Bouw Gemini contents array op
-    const contents = [];
+    // Bouw parts op vanuit messages
+    const parts = [];
 
-    // Voeg berichten toe
-    for (const msg of messages) {
+    if (system) {
+      parts.push({ text: "INSTRUCTIES:\n" + system + "\n\n" });
+    }
+
+    for (const msg of (messages || [])) {
       if (typeof msg.content === "string") {
-        contents.push({ role: "user", parts: [{ text: msg.content }] });
+        parts.push({ text: msg.content });
       } else if (Array.isArray(msg.content)) {
-        // Bevat mogelijk PDF (document) en/of tekst
-        const parts = [];
         for (const block of msg.content) {
           if (block.type === "text") {
             parts.push({ text: block.text });
           } else if (block.type === "document" && block.source?.type === "base64") {
             parts.push({
               inlineData: {
-                mimeType: block.source.media_type,
+                mimeType: block.source.media_type || "application/pdf",
                 data: block.source.data,
               },
             });
           }
         }
-        contents.push({ role: "user", parts });
       }
     }
 
     const geminiBody = {
-      system_instruction: system ? { parts: [{ text: system }] } : undefined,
-      contents,
+      contents: [{ role: "user", parts }],
       generationConfig: {
         maxOutputTokens: max_tokens || 4000,
         temperature: 0.2,
@@ -61,11 +60,14 @@ export default async function handler(req, res) {
     const geminiData = await geminiRes.json();
 
     if (!geminiRes.ok) {
-      return res.status(geminiRes.status).json({ error: geminiData.error?.message || "Gemini API fout" });
+      const msg = geminiData?.error?.message || JSON.stringify(geminiData);
+      return res.status(geminiRes.status).json({ error: msg });
     }
 
-    // Zet Gemini response om naar Anthropic-stijl (zodat frontend ongewijzigd blijft)
-    const text = geminiData.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
+    const text = geminiData.candidates?.[0]?.content?.parts
+      ?.map(p => p.text || "")
+      .join("") || "";
+
     return res.status(200).json({
       content: [{ type: "text", text }]
     });

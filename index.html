@@ -456,16 +456,21 @@ Vul zo veel mogelijk kolommen in. Gebruik "n.b." als waarde onbekend is. Geef ${
       })
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error?.message || 'API fout ' + res.status);
+      const msg = data?.error?.message || data?.error || 'API fout ' + res.status;
+      throw new Error(String(msg));
     }
 
-    const data = await res.json();
+    if (!data.content || !data.content[0]?.text) {
+      throw new Error('Geen antwoord ontvangen. Controleer GEMINI_API_KEY in Vercel → Settings → Environment Variables.');
+    }
+
     const raw = data.content.map(b => b.text || '').join('').replace(/```json|```/g,'').trim();
     let parsed;
     try { parsed = JSON.parse(raw); }
-    catch { const m = raw.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('JSON parse mislukt'); }
+    catch { const m = raw.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('JSON parse mislukt — probeer opnieuw'); }
 
     rsplData = parsed;
     render(parsed);
